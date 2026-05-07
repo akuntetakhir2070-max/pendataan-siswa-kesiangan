@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SMK Darul Muttaqin Cianjur - Sistem Kesiangan</title>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',Arial,sans-serif; }
+    body { background:#f1f5f9; }
+
+    /* ---- LOGIN ---- */
+    #loginPage {
+      min-height:100vh; display:flex; align-items:center; justify-content:center;
+      background:linear-gradient(135deg,#0f172a,#1e3a5f,#2563eb);
+    }
+    .loginBox {
+      background:#fff; border-radius:20px; padding:40px 36px;
+      width:100%; max-width:380px; box-shadow:0 20px 60px rgba(0,0,0,0.3);
+      text-align:center;
+    }
+    .loginLogo {
+      width:70px; height:70px; background:#0f172a; border-radius:18px;
+      display:flex; align-items:center; justify-content:center;
+      margin:0 auto 16px; font-size:32px;
+    }
+    .loginBox h2 { font-size:18px; color:#0f172a; font-weight:700; margin-bottom:4px; }
+    .loginBox p { font-size:13px; color:#64748b; margin-bottom:24px; }
+    .loginBox input {
+      width:100%; padding:12px 14px; border:1.5px solid #e2e8f0;
+      border-radius:10px; font-size:14px; margin-bottom:12px; outline:none;
+      transition:.2s; color:#0f172a;
+    }
+    .loginBox input:focus { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,0.15); }
+    .loginBox .btnLogin {
+      width:100%; padding:12px; background:#0f172a; color:#fff;
+      border:none; border-radius:10px; font-size:15px; font-weight:600;
+      cursor:pointer; transition:.2s;
+    }
+    .loginBox .btnLogin:hover { background:#1e3a5f; }
+    .loginHint { font-size:12px; color:#94a3b8; margin-top:14px; }
+    .loginHint code { font-weight:700; color:#475569; }
+
+    /* ---- APP ---- */
+    #app { display:none; }
+    header {
+      background:linear-gradient(90deg,#0f172a,#1e3a5f);
+      color:#fff; padding:14px 20px; position:sticky; top:0; z-index:100;
+      box-shadow:0 2px 10px rgba(0,0,0,0.3);
+    }
+    .headerInner {
+      max-width:1400px; margin:0 auto;
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      flex-wrap:wrap;
+    }
+    .headerLeft h1 { font-size:17px; font-weight:700; }
+    .headerLeft p { font-size:12px; color:rgba(255,255,255,0.6); }
+    .headerRight { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+
+    /* Clock */
+    .clockBox {
+      background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2);
+      border-radius:12px; padding:8px 14px; text-align:right;
+      backdrop-filter:blur(4px);
+    }
+    .clockTime { font-family:'Courier New',monospace; font-size:18px; font-weight:700; color:#fff; line-height:1; }
+    .clockDate { font-size:11px; color:rgba(255,255,255,0.65); margin-top:3px; }
+
+    /* Connection */
+    .connBadge {
+      display:flex; align-items:center; gap:6px;
+      padding:6px 12px; border-radius:10px; font-size:12px; font-weight:600;
+    }
+    .connBadge.online { background:rgba(34,197,94,0.2); color:#86efac; border:1px solid rgba(34,197,94,0.3); }
+    .connBadge.offline { background:rgba(239,68,68,0.2); color:#fca5a5; border:1px solid rgba(239,68,68,0.3); }
+    .connDot { width:8px; height:8px; border-radius:50%; }
+    .online .connDot { background:#4ade80; box-shadow:0 0 6px #4ade80; animation:pulse 1.5s infinite; }
+    .offline .connDot { background:#f87171; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+
+    /* Logout btn */
+    .btnLogout {
+      background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2);
+      color:#fff; padding:7px 14px; border-radius:10px; cursor:pointer;
+      font-size:13px; font-weight:500; transition:.2s;
+    }
+    .btnLogout:hover { background:rgba(255,255,255,0.2); }
+
+    /* ---- CONTAINER ---- */
+    .container { max-width:1400px; margin:0 auto; padding:20px 16px; }
+
+    /* Stats */
+    .statsWrap { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; margin-bottom:20px; }
+    .stat { border-radius:16px; padding:20px 22px; color:#fff; box-shadow:0 4px 15px rgba(0,0,0,0.15); }
+    .stat.s1 { background:linear-gradient(135deg,#0f172a,#1e3a5f); }
+    .stat.s2 { background:linear-gradient(135deg,#b45309,#f59e0b); }
+    .stat.s3 { background:linear-gradient(135deg,#991b1b,#ef4444); }
+    .statLabel { font-size:12px; color:rgba(255,255,255,0.7); margin-bottom:8px; }
+    .statNum { font-size:40px; font-weight:800; line-height:1; }
+
+    /* Toolbar */
+    .toolbar {
+      background:#fff; border-radius:14px; padding:14px 16px; margin-bottom:16px;
+      box-shadow:0 1px 6px rgba(0,0,0,0.08); display:flex; gap:10px;
+      flex-wrap:wrap; align-items:center;
+    }
+    .toolbar input[type=text] {
+      flex:1; min-width:180px; padding:9px 13px; border:1.5px solid #e2e8f0;
+      border-radius:10px; font-size:14px; outline:none; transition:.2s; color:#0f172a;
+    }
+    .toolbar input[type=text]:focus { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,0.12); }
+    .toolbar select {
+      padding:9px 13px; border:1.5px solid #e2e8f0; border-radius:10px;
+      font-size:14px; outline:none; cursor:pointer; background:#fff; color:#0f172a;
+      transition:.2s;
+    }
+    .toolbar select:focus { border-color:#2563eb; }
+
+    /* Buttons */
+    .btn {
+      padding:8px 14px; border:none; border-radius:10px; font-size:13px;
+      font-weight:600; cursor:pointer; display:inline-flex; align-items:center;
+      gap:6px; transition:.18s; white-space:nowrap;
+    }
+    .btn:hover { opacity:.88; transform:translateY(-1px); }
+    .btn:active { transform:translateY(0); }
+    .btnPrimary { background:#0f172a; color:#fff; }
+    .btnGreen { background:#16a34a; color:#fff; }
+    .btnRed { background:#dc2626; color:#fff; }
+    .btnOutline { background:#fff; color:#0f172a; border:1.5px solid #e2e8f0; }
+    .btnSm { padding:5px 10px; font-size:12px; border-radius:8px; }
+
+    /* Table card */
+    .tableCard {
+      background:#fff; border-radius:14px; overflow:hidden;
+      box-shadow:0 1px 6px rgba(0,0,0,0.08); margin-bottom:20px;
+    }
+    .tableHead {
+      padding:14px 18px; border-bottom:1px solid #f1f5f9;
+      display:flex; align-items:center; justify-content:space-between;
+    }
+    .tableHead h2 { font-size:15px; font-weight:700; color:#0f172a; }
+    .badge {
+      display:inline-flex; align-items:center; justify-content:center;
+      padding:2px 8px; border-radius:999px; font-size:12px; font-weight:600;
+    }
+    .badgeGray { background:#f1f5f9; color:#64748b; }
+    .badgeRed { background:#fee2e2; color:#dc2626; }
+    .badgeBlue { background:#dbeafe; color:#1d4ed8; }
+
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th { background:#0f172a; color:#fff; padding:11px 13px; text-align:left; font-weight:600; font-size:12px; }
+    td { padding:10px 13px; border-bottom:1px solid #f1f5f9; color:#1e293b; vertical-align:middle; }
+    tr:last-child td { border-bottom:none; }
+    tr:hover td { background:#f8fafc; }
+    tr.hasTelat td { background:#fff5f5; }
+    tr.hasTelat:hover td { background:#fee2e2; }
+    .tdCenter { text-align:center; }
+    .tdActions { display:flex; gap:5px; align-items:center; flex-wrap:wrap; }
+
+    .kesiLast { line-height:1.3; }
+    .kesiTime { font-weight:700; font-size:13px; color:#0f172a; }
+    .kesiDate { font-size:11px; color:#94a3b8; }
+
+    /* Footer */
+    .footer { text-align:center; font-size:12px; color:#94a3b8; padding:16px 0 24px; }
+
+    /* ---- MODAL ---- */
+    .modalOverlay {
+      position:fixed; inset:0; background:rgba(0,0,0,0.55);
+      display:flex; align-items:center; justify-content:center;
+      z-index:1000; padding:16px; animation:fadeIn .15s ease;
+    }
+    @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+    .modal {
+      background:#fff; border-radius:18px; padding:28px;
+      width:100%; max-width:460px; max-height:90vh; overflow-y:auto;
+      box-shadow:0 20px 60px rgba(0,0,0,0.25); animation:slideUp .2s ease;
+    }
+    @keyframes slideUp { from{transform:translateY(20px);opacity:0} to{transform:translateY(0);opacity:1} }
+    .modal h3 { font-size:16px; font-weight:700; color:#0f172a; margin-bottom:4px; }
+    .modal .subTitle { font-size:12px; color:#64748b; margin-bottom:16px; }
+    .modal label { font-size:13px; font-weight:600; color:#374151; display:block; margin-bottom:5px; }
+    .modal input, .modal select {
+      width:100%; padding:10px 13px; border:1.5px solid #e2e8f0; border-radius:10px;
+      font-size:14px; outline:none; transition:.2s; margin-bottom:14px; color:#0f172a;
+    }
+    .modal input:focus, .modal select:focus { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,0.12); }
+    .modalFooter { display:flex; gap:10px; justify-content:flex-end; margin-top:8px; }
+    .closeBtn {
+      position:absolute; top:16px; right:16px; background:none; border:none;
+      font-size:22px; cursor:pointer; color:#94a3b8; padding:4px;
+    }
+    .closeBtn:hover { color:#0f172a; }
+
+    /* Riwayat list */
+    .riwayatList { display:flex; flex-direction:column; gap:8px; max-height:320px; overflow-y:auto; }
+    .riwayatItem {
+      display:flex; align-items:center; gap:12px;
+      padding:10px 14px; border-radius:10px; background:#f8fafc; border:1px solid #f1f5f9;
+    }
+    .riwayatNo {
+      width:28px; height:28px; border-radius:50%; background:#fee2e2;
+      display:flex; align-items:center; justify-content:center;
+      font-size:12px; font-weight:800; color:#dc2626; flex-shrink:0;
+    }
+    .riwayatTime { font-weight:700; font-size:14px; color:#0f172a; }
+    .riwayatDateStr { font-size:11px; color:#94a3b8; margin-top:2px; }
+    .emptyMsg { text-align:center; padding:32px; color:#94a3b8; font-size:14px; }
+
+    /* Confirm dialog */
+    .confirmBox {
+      background:#fff; border-radius:16px; padding:28px;
+      width:100%; max-width:380px; text-align:center;
+      box-shadow:0 20px 60px rgba(0,0,0,0.25);
+    }
+    .confirmIcon { font-size:42px; margin-bottom:12px; }
+    .confirmBox h3 { font-size:16px; font-weight:700; margin-bottom:8px; color:#0f172a; }
+    .confirmBox p { font-size:13px; color:#64748b; margin-bottom:20px; }
+    .confirmBtns { display:flex; gap:10px; justify-content:center; }
+
+    /* Hidden */
+    .hidden { display:none !important; }
+
+    @media(max-width:640px) {
+      th, td { padding:8px 8px; font-size:11px; }
+      .tdActions { flex-direction:column; }
+      .statsWrap { grid-template-columns:1fr 1fr; }
+      .statNum { font-size:32px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ========== LOGIN ========== -->
+<div id="loginPage">
+  <div class="loginBox">
+    <div class="loginLogo">🏫</div>
+    <h2>SMK Darul Muttaqin Cianjur</h2>
+    <p>Sistem Penghitung Kesiangan Real Time</p>
+    <input type="password" id="passInput" placeholder="Password Admin" onkeydown="if(event.key==='Enter')login()">
+    <button class="btnLogin" onclick="login()">Masuk</button>
+    <p class="loginHint">Password default: <code>admin123</code></p>
+  </div>
+</div>
+
+<!-- ========== APP ========== -->
+<div id="app">
+
+  <!-- HEADER -->
+  <header>
+    <div class="headerInner">
+      <div class="headerLeft">
+        <h1>SMK Darul Muttaqin Cianjur</h1>
+        <p>Sistem Penghitung Kesiangan Real Time</p>
+      </div>
+      <div class="headerRight">
+        <div id="connBadge" class="connBadge offline">
+          <div class="connDot"></div>
+          <span id="connText">Offline</span>
+          <span id="syncTime" style="font-size:10px;color:rgba(255,255,255,0.5);margin-left:4px;"></span>
+        </div>
+        <div class="clockBox">
+          <div class="clockTime" id="clockTime">--:--:--</div>
+          <div class="clockDate" id="clockDate">--</div>
+        </div>
+        <button class="btnLogout" onclick="logout()">Keluar</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <div class="container">
+
+    <!-- STATS -->
+    <div class="statsWrap">
+      <div class="stat s1">
+        <div class="statLabel">Total Siswa Terdaftar</div>
+        <div class="statNum" id="statTotal">0</div>
+      </div>
+      <div class="stat s2">
+        <div class="statLabel">Siswa Telat</div>
+        <div class="statNum" id="statTelat">0</div>
+      </div>
+      <div class="stat s3">
+        <div class="statLabel">Total Semua Kesiangan</div>
+        <div class="statNum" id="statKesi">0</div>
+      </div>
+    </div>
+
+    <!-- TOOLBAR -->
+    <div class="toolbar">
+      <input type="text" id="searchInput" placeholder="Cari nama siswa..." oninput="renderData()">
+      <select id="filterKelas" onchange="renderData()">
+        <option value="SEMUA">Semua Kelas</option>
+        <option>X TO</option><option>X TJKT</option><option>X MP</option>
+        <option>XI TO</option><option>XI TJKT 1</option><option>XI TJKT 2</option><option>XI MP</option>
+      </select>
+      <button class="btn btnPrimary" onclick="showModal('addModal')">+ Tambah Siswa</button>
+      <button class="btn btnOutline" onclick="exportCSV()">&#8595; Ekspor CSV</button>
+      <label class="btn btnOutline" style="cursor:pointer;">
+        &#8593; Impor CSV
+        <input type="file" accept=".csv" id="importFile" style="display:none" onchange="importCSV(this)">
+      </label>
+      <button class="btn btnOutline" onclick="showModal('passModal')">&#128274; Ganti Password</button>
+      <button class="btn btnRed" onclick="confirmAction('Reset semua database? Semua data akan hilang permanen!',resetDatabase)">Reset DB</button>
+    </div>
+
+    <!-- TABLE -->
+    <div class="tableCard">
+      <div class="tableHead">
+        <h2>Data Siswa <span class="badge badgeGray" id="countBadge">0</span></h2>
+      </div>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>No</th>
+              <th>Nama</th>
+              <th>Kelas</th>
+              <th class="tdCenter">Total Telat</th>
+              <th class="tdCenter">Kesiangan Terakhir</th>
+              <th class="tdCenter">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="footer">&copy; SMK Darul Muttaqin Cianjur &mdash; Sistem Kesiangan Real Time</div>
+  </div>
+</div>
+
+<!-- ========== MODALS ========== -->
+
+<!-- Tambah Siswa -->
+<div id="addModal" class="modalOverlay hidden">
+  <div class="modal">
+    <h3>Tambah Siswa Baru</h3>
+    <p class="subTitle">Masukkan data siswa yang akan ditambahkan</p>
+    <label>Nama Siswa</label>
+    <input type="text" id="newNama" placeholder="Nama lengkap siswa">
+    <label>Kelas</label>
+    <select id="newKelas">
+      <option value="">-- Pilih Kelas --</option>
+      <option>X TO</option><option>X TJKT</option><option>X MP</option>
+      <option>XI TO</option><option>XI TJKT 1</option><option>XI TJKT 2</option><option>XI MP</option>
+    </select>
+    <div class="modalFooter">
+      <button class="btn btnOutline" onclick="hideModal('addModal')">Batal</button>
+      <button class="btn btnPrimary" onclick="tambahSiswa()">Tambah</button>
+    </div>
+  </div>
+</div>
+
+<!-- Ganti Password -->
+<div id="passModal" class="modalOverlay hidden">
+  <div class="modal">
+    <h3>Ganti Password Admin</h3>
+    <p class="subTitle">Password minimal 4 karakter</p>
+    <label>Password Baru</label>
+    <input type="password" id="newPassInput" placeholder="Masukkan password baru">
+    <div class="modalFooter">
+      <button class="btn btnOutline" onclick="hideModal('passModal')">Batal</button>
+      <button class="btn btnPrimary" onclick="gantiPassword()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Riwayat Kesiangan -->
+<div id="riwayatModal" class="modalOverlay hidden">
+  <div class="modal">
+    <h3 id="riwayatNama">-</h3>
+    <p class="subTitle" id="riwayatKelas">-</p>
+    <div id="riwayatList" class="riwayatList"></div>
+    <div class="modalFooter" style="margin-top:14px;">
+      <button class="btn btnOutline" onclick="hideModal('riwayatModal')">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm -->
+<div id="confirmModal" class="modalOverlay hidden">
+  <div class="confirmBox">
+    <div class="confirmIcon">&#9888;</div>
+    <h3 id="confirmMsg">Yakin?</h3>
+    <p id="confirmDesc"></p>
+    <div class="confirmBtns">
+      <button class="btn btnOutline" onclick="hideModal('confirmModal')">Batal</button>
+      <button class="btn btnRed" id="confirmOkBtn" onclick="">Ya, Lanjutkan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" style="position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none;"></div>
+
+<script>
+/* ===================== FIREBASE ===================== */
+const firebaseConfig = {
+  apiKey: "AIzaSyAxDOW9T5y5N4ACIOBmUCu5VoPEXaRUIh8",
+  authDomain: "pendataan-kesiangan.firebaseapp.com",
+  databaseURL: "https://pendataan-kesiangan-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "pendataan-kesiangan",
+  storageBucket: "pendataan-kesiangan.firebasestorage.app",
+  messagingSenderId: "1027910075249",
+  appId: "1:1027910075249:web:cf53537e9a4c1bd44b6cd0"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+/* ===================== DATA DEFAULT ===================== */
+const siswaDefault = [
+  "A. Rochman Djaelani XI TO","Aerlangga Alfarizy XI TO","Ananda Putra Nugraha XI TO","Anaya Galang Saputra XI TO","Fakhri Fauzan XI TO","Fauzan Adam Juliana Putra XI TO","Guruh Deandra Putra XI TO","Hardiansyah XI TO","Helmi Maulana XI TO","Ilham Muhamad Ritazul Arifin XI TO","Imam Jamasari XI TO","Juandi Alrasyid XI TO","M Bintang Pebriyansah XI TO","M Fadhil Alfajri XI TO","M Rehan Dika XI TO","M Rezki Agustian XI TO","M. Bintang Pratama XI TO","M. Ramdan Herdiansyah XI TO","M. Rifki Aditya XI TO","Miftahul Fariz XI TO","Moch Husni Mubarokh XI TO","Muhammad Azka Maulana XI TO","Muhamad Al Ghifari XI TO","Muhamad Arya Wiratama XI TO","Muhamad Nur Ihsan XI TO","Muhammad Adrian XI TO","Muhammad Alfiansyah XI TO","Muhammad Azwan Al Buchori XI TO","Muhammad Farhan Firdaus XI TO","Muhammad Fauji XI TO","Muhammad Siddiq Firmansyah XI TO","Nendi Sanjaya XI TO","Pirdan Maulana XI TO","Rahman Mustopa XI TO","Rifki Adriansyah XI TO","Ripki Ramdani XI TO","Rivansyah XI TO","Riyan Hidayatuloh XI TO","Rizki Fathani Aziz XI TO","Rizky Abdurahman XI TO","Satria Nurfirsatuloh XI TO","Yadi Permana Sidik XI TO","Zaki Muhamad Hanavi XI TO","M Arya Ramadhan XI TO",
+  "Aang Maulana XI TJKT 1","Adit Maulana XI TJKT 1","Amir Rahman XI TJKT 1","Ananda Rizky Kukuh Adi Syahputra XI TJKT 1","Dimas Gustian XI TJKT 1","Dina Pratiwi XI TJKT 1","Fadli Iskandar XI TJKT 1","Heksa Muhammad Zacky XI TJKT 1","M Dika Permana XI TJKT 1","M. Nazwar Maulana Junaedi XI TJKT 1","Marlin Andini Hestiana XI TJKT 1","Mochamad Fauzi Rismanto XI TJKT 1","Mochammad Fhajar Syaputra XI TJKT 1","Muhamad Fakhri Azhuri XI TJKT 1","Muhamad Iman Rohman XI TJKT 1","Muhammad Fauzi Maulana XI TJKT 1","Muhammad Ilyas XI TJKT 1","Muhammad Rifki Ramadan XI TJKT 1","Muhammad Sopiyan XI TJKT 1","Raka Al Farizi XI TJKT 1","Randi Rustandi Rahman XI TJKT 1","Salma Prihartini XI TJKT 1","Salsa Safitri XI TJKT 1","Siti Nuraidah XI TJKT 1","Sulaeman XI TJKT 1","Suryadi XI TJKT 1","Hisam Fauzi XI TJKT 1","Muhammad Fauzi Zikram Muharam XI TJKT 1",
+  "Agfi Abdul Salam XI TJKT 2","Ahmad Amirudin XI TJKT 2","Arip XI TJKT 2","Derisvan Irsandi XI TJKT 2","Fawaj Amanulloh XI TJKT 2","Hasna XI TJKT 2","Indra Setiawan XI TJKT 2","Lira Afriyanti XI TJKT 2","M Nasir Abdul Zabar XI TJKT 2","M. Zam Zam Saerul Lana XI TJKT 2","M.Raihan Apriliyan XI TJKT 2","Moh Luky Kurniawan XI TJKT 2","Muhamad Ramdani XI TJKT 2","Muhamad Rizky Setiawan XI TJKT 2","Muhammad Maulana Yusup Hermawan XI TJKT 2","Muhammad Yusup XI TJKT 2","Nuri Syafiina XI TJKT 2","Nurika Maya Agustina XI TJKT 2","Raka Yudistira Azhar XI TJKT 2","Rin Rin Maspuroh XI TJKT 2","Silfia Siti Salsa XI TJKT 2","Siti Fitriani XI TJKT 2","Wildan Nur Ilyasa XI TJKT 2","Muhammad Rizki Fadilah XI TJKT 2","Muhamad Rifaldi Saputra XI TJKT 2","Muhammad Abdul Kodir Jaelani XI TJKT 2","Salma Nurkholizah XI TJKT 2","Muhammad Raihan XI TJKT 2","Memey Santika Lestari XI TJKT 2",
+  "Ajela Fitria Julva XI MP","Amalia Hasna XI MP","Anisa Septiani Fitri XI MP","Annisa Fauziah XI MP","Annisa Nur Maulidia XI MP","Defyta Sri Haryani XI MP","Destri Herdiawati XI MP","Gita Siti Fadilah XI MP","Lesti Lianita XI MP","Lusi Sulistiawati XI MP","Mutia Nurlita XI MP","Nadia Febriani XI MP","Najwa Syahrul Ma'Wa XI MP","Nanah Ramdanah XI MP","Nayla Septiani Kristiawan XI MP","Nisrina Hanizias XI MP","Nurul Patimah XI MP","Rahma Maulida XI MP","Ratna Seza XI MP","Resti Septi Ramadani XI MP","Saika Moza Aulia XI MP","Salsyah Nuraeni Tri Rizki XI MP","Saripah Oktapiyani XI MP","Selomita Azahra Hoirunnisa XI MP","Sherly Yulianti Safitri XI MP","Siti Amelia XI MP","Siti Ane Ayunindia XI MP","Siti Azkia Adawiah XI MP","Siti Nurfitriyani Azzahra XI MP","Siti Rahmawati XI MP","Siti Rubai'ah Adawiyah XI MP","Siti Salwa XI MP","Siti Sopiah XI MP","Tiara Novi Yanti XI MP","Tri Safitri XI MP","Vhannesya Nayya Parsaulian Sitompul XI MP","Yusri Billah Azzahra XI MP","Riska Amelia Hernayanti XI MP","Maya Siti Agustiani XI MP","Marisa Putri Soraya XI MP",
+  "Afriana X TO","Ahmad Nopal X TO","Arya Ramadhan X TO","Beny Satria Putra X TO","Devano Nandika X TO","Hadi Maulana X TO","Irwansyah X TO","M Fahri Prasetya X TO","M. Irpan Abdurohman X TO","M Rapa Ibrahim X TO","M Wildan Humaezi X TO","Maulana X TO","Moch Bagus Tri Ramadhan X TO","Moh Aldi Febrian X TO","Muhamad Sandika X TO","Muhamad Arfan Hawari X TO","Muhamad Helmi Palyani X TO","Muhamad Putra Aryagung X TO","Muhamad Saepul Hidayat X TO","Muhammad Ali Sa'Ban X TO","Muhammad Fajar Al-Farizi X TO","Muhammad Lutfi Hadi Pratama X TO","Muhammad Raihan Dwi Saputra X TO","Muhammad Rizki Fauzi X TO","Muhammad Rizki Pratama X TO","Muhammad Zhidan Maulid Ramdani X TO","Radhi Riyadi X TO","Raditya Avrizal X TO","Raditya Firmansyah X TO","Rahmat X TO","Rifky Zatmika X TO","Sani Kurniawan X TO","Yuri Rahmat Saleh X TO","Muhamad Abdul Pahdi X TO",
+  "Alif Muhamad Al Zikri X TJKT","Alip Abdul Patah X TJKT","Angga Maulana Kusumah X TJKT","Anisa Sri Aulia X TJKT","Ayudia Irawan X TJKT","Cep Isya Ansori X TJKT","Cep Salman Aziz X TJKT","Derin Regina Astuti X TJKT","Desti Fitri Septiani X TJKT","Deva Haidar Rafif Haryadi X TJKT","Dina Inayah X TJKT","Fajar X TJKT","Firda Ferdianti X TJKT","Firman Abdul Majid X TJKT","Hendi Juandi X TJKT","M Rokib Alamsyah X TJKT","M. Angga Rusmana X TJKT","Moch Fahri Idris X TJKT","Moch. Firmansah X TJKT","Mochamad Daffa Al Faa'Iz Setiawan X TJKT","Muhamad Azkiya Azis X TJKT","Muhammad Habibi Arsya Agniya X TJKT","Muhammad Irgi Farid X TJKT","Muhammad Nabil Al Haqqi X TJKT","Muhammad Razib Al Rahmat X TJKT","Muhammad Yahya Wijaya X TJKT","Nadila Rahma Aulia X TJKT","Nayla Ramziah X TJKT","Neng Jahra Fusfita X TJKT","Qirani Nur Friza X TJKT","Raisa Maulana Firmansyah X TJKT","Reza Pratama X TJKT","Rifat Nur Alamsyah X TJKT","Rizki Maulana X TJKT","Silvia Nurul Isnaini X TJKT","Siti Choerunisa Pertiwi X TJKT","Siti Salsabila Mulyasari X TJKT","Siti Yaspi Sopi Mariyah X TJKT","Syamsul Munawar X TJKT","Vania Febriani X TJKT","Zulfan Azhar Maulana X TJKT","Aiman Afdhal Nauf X TJKT",
+  "Ajeng Airil Azmi X MP","Alya Alfadiyah X MP","Asha Syauqi Bintang Maulida X MP","Asya Siti Pedana X MP","Aulia Putri X MP","Citra Nurahmah X MP","Dini Balqis Faiha X MP","Elsa Cahyati X MP","Erina Fauziah X MP","Fitri Salsabila X MP","Gina Agustina X MP","Hasniah Adrikni X MP","Herawati Puspitasari X MP","Keysha Nuralifa X MP","Meilinda Siti Maspupah X MP","Nabila Nurul Anbiya X MP","Nadya Fitria Yulianti X MP","Neng Elsa Safitri X MP","Neng Rajma Erlianti X MP","Neng Salma Seftiyani X MP","Neyra Putri Friandis X MP","Nova Novita X MP","Putri Regina X MP","Rastianika Putri Marlina X MP","Reni Nur Anggraeni X MP","Renita Apriliyani X MP","Reva Novianti X MP","Revia Laelatus Syafariah X MP","Rismawanti X MP","Riyanti Novala Sari X MP","Sarah Muzdalipah X MP","Sela Amalia X MP","Silvia Septiana X MP","Siti Anisa X MP","Siti Aurora Risda Handayani X MP","Siti Azka Fauziah Suhendar X MP","Siti Nuraeni X MP","Siti Siva'u Rahmah X MP","Syifa Mulyani X MP","Vira Sasmita Handriyani X MP","Zazma X MP","Pani Hardianti X MP","Zulfia Zahra X MP","Natasya Azizah Johan X MP","Keyla Noer Febryanti X MP","Azhar Pratami Ramadina X MP"
+];
+
+/* ===================== PARSE KELAS ===================== */
+function parseKelas(teks) {
+  const kelasList = ["XI TJKT 1","XI TJKT 2","XI TO","XI MP","X TO","X TJKT","X MP"];
+  for (const k of kelasList) {
+    if (teks.endsWith(" " + k)) {
+      return { nama: teks.slice(0, teks.length - k.length - 1).trim(), kelas: k };
+    }
+  }
+  return null;
+}
+
+/* ===================== CLOCK ===================== */
+function updateClock() {
+  const now = new Date();
+  document.getElementById("clockTime").textContent =
+    now.toLocaleTimeString("id-ID", { hour:"2-digit", minute:"2-digit", second:"2-digit", hour12:false });
+  document.getElementById("clockDate").textContent =
+    now.toLocaleDateString("id-ID", { weekday:"long", day:"numeric", month:"long", year:"numeric" });
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+/* ===================== CONNECTION STATUS ===================== */
+db.ref(".info/connected").on("value", snap => {
+  const online = snap.val() === true;
+  const badge = document.getElementById("connBadge");
+  const text = document.getElementById("connText");
+  const sync = document.getElementById("syncTime");
+  badge.className = "connBadge " + (online ? "online" : "offline");
+  text.textContent = online ? "Online" : "Offline";
+  if (online) {
+    const now = new Date();
+    sync.textContent = "Sync " + now.toLocaleTimeString("id-ID", { hour:"2-digit", minute:"2-digit", second:"2-digit" });
+  } else {
+    sync.textContent = "";
+  }
+});
+
+/* ===================== PASSWORD / LOGIN ===================== */
+let adminPass = localStorage.getItem("adminPassword") || "admin123";
+
+function login() {
+  const input = document.getElementById("passInput").value;
+  if (input === adminPass) {
+    document.getElementById("loginPage").style.display = "none";
+    document.getElementById("app").style.display = "block";
+    initData();
+  } else {
+    showToast("Password salah!", "error");
+    document.getElementById("passInput").value = "";
+  }
+}
+
+function logout() {
+  document.getElementById("loginPage").style.display = "flex";
+  document.getElementById("app").style.display = "none";
+  document.getElementById("passInput").value = "";
+}
+
+function gantiPassword() {
+  const np = document.getElementById("newPassInput").value.trim();
+  if (np.length < 4) { showToast("Password minimal 4 karakter", "error"); return; }
+  localStorage.setItem("adminPassword", np);
+  adminPass = np;
+  document.getElementById("newPassInput").value = "";
+  hideModal("passModal");
+  showToast("Password berhasil diubah");
+}
+
+/* ===================== FIREBASE DATA ===================== */
+let semuaData = {};
+
+function initData() {
+  db.ref("siswa").once("value", snap => {
+    if (!snap.exists()) {
+      siswaDefault.forEach(item => {
+        const parsed = parseKelas(item.trim());
+        if (!parsed) return;
+        db.ref("siswa").push({ nama: parsed.nama, kelas: parsed.kelas, telat: 0 });
+      });
+    }
+  });
+  db.ref("siswa").on("value", snap => {
+    semuaData = snap.val() || {};
+    renderData();
+  });
+}
+
+/* ===================== RENDER ===================== */
+function renderData() {
+  const tbody = document.getElementById("tbody");
+  const filter = document.getElementById("filterKelas").value;
+  const search = document.getElementById("searchInput").value.toLowerCase();
+  tbody.innerHTML = "";
+
+  let totalSiswa = Object.keys(semuaData).length;
+  let siswaTelat = 0, totalKesi = 0, no = 0;
+
+  const entries = Object.entries(semuaData);
+  const filtered = [];
+
+  entries.forEach(([id, s]) => {
+    if (s.telat > 0) siswaTelat++;
+    totalKesi += (s.telat || 0);
+    const matchFilter = filter === "SEMUA" || s.kelas === filter;
+    const matchSearch = s.nama.toLowerCase().includes(search);
+    if (matchFilter && matchSearch) filtered.push([id, s]);
+  });
+
+  document.getElementById("statTotal").textContent = totalSiswa;
+  document.getElementById("statTelat").textContent = siswaTelat;
+  document.getElementById("statKesi").textContent = totalKesi;
+  document.getElementById("countBadge").textContent = filtered.length;
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:40px;color:#94a3b8;">Tidak ada data</td></tr>`;
+    return;
+  }
+
+  filtered.forEach(([id, s]) => {
+    no++;
+    // Get last kesiangan time
+    let lastTimeHtml = `<span style="color:#94a3b8">—</span>`;
+    if (s.riwayat) {
+      const times = Object.values(s.riwayat).sort();
+      if (times.length > 0) {
+        const lastDate = new Date(times[times.length - 1]);
+        lastTimeHtml = `<div class="kesiLast">
+          <div class="kesiTime">${lastDate.toLocaleTimeString("id-ID",{hour:"2-digit",minute:"2-digit"})}</div>
+          <div class="kesiDate">${lastDate.toLocaleDateString("id-ID",{day:"numeric",month:"short",year:"numeric"})}</div>
+        </div>`;
+      }
+    }
+
+    const telatBadge = s.telat > 0
+      ? `<span class="badge badgeRed" style="font-size:14px;padding:3px 10px;">${s.telat}x</span>`
+      : `<span style="color:#94a3b8">0</span>`;
+
+    const rowClass = s.telat > 0 ? "hasTelat" : "";
+    tbody.innerHTML += `
+      <tr class="${rowClass}">
+        <td>${no}</td>
+        <td style="font-weight:600">${escHtml(s.nama)}</td>
+        <td><span class="badge badgeBlue">${escHtml(s.kelas)}</span></td>
+        <td class="tdCenter">${telatBadge}</td>
+        <td class="tdCenter">${lastTimeHtml}</td>
+        <td class="tdCenter">
+          <div class="tdActions">
+            <button class="btn btnGreen btnSm" onclick="tambahTelat('${id}',${s.telat||0})">+Telat</button>
+            <button class="btn btnOutline btnSm" onclick="showRiwayat('${id}')">Riwayat</button>
+            <button class="btn btnOutline btnSm" onclick="confirmAction('Reset telat ${escHtml(s.nama)}?','',()=>resetTelat('${id}'))">Reset</button>
+            <button class="btn btnRed btnSm" onclick="confirmAction('Hapus ${escHtml(s.nama)}?','Data akan dihapus permanen.',()=>hapusSiswa('${id}'))">Hapus</button>
+          </div>
+        </td>
+      </tr>`;
+  });
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+/* ===================== FITUR ===================== */
+function tambahTelat(id, currentTelat) {
+  const now = new Date().toISOString();
+  db.ref("siswa/" + id).update({ telat: currentTelat + 1 });
+  db.ref("siswa/" + id + "/riwayat").push(now);
+  showToast("Kesiangan dicatat pada " + new Date().toLocaleTimeString("id-ID",{hour:"2-digit",minute:"2-digit",second:"2-digit"}));
+}
+
+function resetTelat(id) {
+  db.ref("siswa/" + id).update({ telat: 0, riwayat: null });
+  showToast("Data kesiangan direset", "info");
+}
+
+function hapusSiswa(id) {
+  db.ref("siswa/" + id).remove();
+  showToast("Siswa dihapus", "info");
+}
+
+function resetDatabase() {
+  db.ref("siswa").remove();
+  showToast("Database direset");
+}
+
+/* Tambah siswa manual */
+function tambahSiswa() {
+  const nama = document.getElementById("newNama").value.trim();
+  const kelas = document.getElementById("newKelas").value;
+  if (!nama) { showToast("Nama wajib diisi", "error"); return; }
+  if (!kelas) { showToast("Kelas wajib dipilih", "error"); return; }
+  db.ref("siswa").push({ nama, kelas, telat: 0 });
+  document.getElementById("newNama").value = "";
+  document.getElementById("newKelas").value = "";
+  hideModal("addModal");
+  showToast(nama + " berhasil ditambahkan");
+}
+
+/* Riwayat */
+function showRiwayat(id) {
+  const s = semuaData[id];
+  if (!s) return;
+  document.getElementById("riwayatNama").textContent = s.nama;
+  document.getElementById("riwayatKelas").textContent = s.kelas + " — Total " + s.telat + "x kesiangan";
+  const list = document.getElementById("riwayatList");
+  list.innerHTML = "";
+  if (!s.riwayat || Object.keys(s.riwayat).length === 0) {
+    list.innerHTML = `<div class="emptyMsg">Belum ada riwayat kesiangan</div>`;
+  } else {
+    const entries = Object.entries(s.riwayat)
+      .map(([k, iso]) => ({ k, date: new Date(iso) }))
+      .sort((a, b) => b.date - a.date);
+    entries.forEach((e, i) => {
+      list.innerHTML += `
+        <div class="riwayatItem">
+          <div class="riwayatNo">${entries.length - i}</div>
+          <div>
+            <div class="riwayatTime">${e.date.toLocaleTimeString("id-ID",{hour:"2-digit",minute:"2-digit",second:"2-digit"})}</div>
+            <div class="riwayatDateStr">${e.date.toLocaleDateString("id-ID",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}</div>
+          </div>
+        </div>`;
+    });
+  }
+  showModal("riwayatModal");
+}
+
+/* ===================== EKSPOR CSV ===================== */
+function exportCSV() {
+  const rows = ["No,Nama,Kelas,Total Telat,Waktu Kesiangan"];
+  let no = 1;
+  Object.values(semuaData).forEach(s => {
+    const riwStr = s.riwayat
+      ? Object.values(s.riwayat).map(iso => new Date(iso).toLocaleString("id-ID")).join(" | ")
+      : "";
+    rows.push(`${no++},"${s.nama}","${s.kelas}",${s.telat},"${riwStr}"`);
+  });
+  const csv = rows.join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  const d = new Date().toLocaleDateString("id-ID").replace(/\//g, "-");
+  a.download = "kesiangan-" + d + ".csv";
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast("Data diekspor ke CSV");
+}
+
+/* ===================== IMPOR CSV ===================== */
+function importCSV(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async e => {
+    const text = e.target.result;
+    const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+    if (lines.length < 2) { showToast("File CSV tidak valid", "error"); return; }
+    const headers = lines[0].split(",").map(h => h.replace(/"/g,"").toLowerCase().trim());
+    const namaIdx = headers.indexOf("nama");
+    const kelasIdx = headers.indexOf("kelas");
+    if (namaIdx === -1 || kelasIdx === -1) { showToast("CSV harus punya kolom Nama dan Kelas", "error"); return; }
+    const existing = new Set(Object.values(semuaData).map(s => s.nama + "||" + s.kelas));
+    let added = 0;
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(",").map(c => c.replace(/"/g,"").trim());
+      const nama = cols[namaIdx];
+      const kelas = cols[kelasIdx];
+      if (!nama || !kelas) continue;
+      const key = nama + "||" + kelas;
+      if (!existing.has(key)) {
+        await db.ref("siswa").push({ nama, kelas, telat: 0 });
+        existing.add(key);
+        added++;
+      }
+    }
+    showToast("Impor selesai: " + added + " siswa baru ditambahkan");
+  };
+  reader.readAsText(file);
+  input.value = "";
+}
+
+/* ===================== MODAL ===================== */
+function showModal(id) { document.getElementById(id).classList.remove("hidden"); }
+function hideModal(id) { document.getElementById(id).classList.add("hidden"); }
+
+// Close modal on overlay click
+document.querySelectorAll(".modalOverlay").forEach(overlay => {
+  overlay.addEventListener("click", e => {
+    if (e.target === overlay) overlay.classList.add("hidden");
+  });
+});
+
+let confirmCallback = null;
+function confirmAction(msg, desc, callback) {
+  document.getElementById("confirmMsg").textContent = msg;
+  document.getElementById("confirmDesc").textContent = desc || "";
+  confirmCallback = callback;
+  document.getElementById("confirmOkBtn").onclick = () => {
+    hideModal("confirmModal");
+    if (confirmCallback) confirmCallback();
+  };
+  showModal("confirmModal");
+}
+
+/* ===================== TOAST ===================== */
+function showToast(msg, type = "success") {
+  const toast = document.createElement("div");
+  const colors = { success: "#16a34a", error: "#dc2626", info: "#2563eb" };
+  toast.style.cssText = `
+    background:${colors[type]||colors.success};color:#fff;padding:12px 18px;
+    border-radius:12px;font-size:13px;font-weight:600;
+    box-shadow:0 4px 20px rgba(0,0,0,0.25);opacity:0;
+    transition:opacity .3s,transform .3s;transform:translateY(10px);
+    pointer-events:auto;max-width:300px;
+  `;
+  toast.textContent = msg;
+  document.getElementById("toast").appendChild(toast);
+  requestAnimationFrame(() => {
+    toast.style.opacity = "1";
+    toast.style.transform = "translateY(0)";
+  });
+  setTimeout(() => {
+    toast.style.opacity = "0";
+    toast.style.transform = "translateY(10px)";
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
+</script>
+</body>
+</html>
